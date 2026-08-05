@@ -27,6 +27,11 @@ fi
 
 mapfile -t OCA_REPOS < <(grep -vE '^\s*(#|$)' "$OCA_LIST_FILE")
 
+OCA_SELECTION=$(dialog --checklist "Select OCA modules:" 20 60 15 \
+    "server-tools" "Server Tools" on \
+    "web" "Web" on \
+    "helpdesk" "Helpdesk" off \
+    ... 3>&1 1>&2 2>&3)
 
 clone_oca_repo() {
 

@@ -99,5 +99,14 @@ do
 
 done
 
+STATE_FILE="/var/log/odoo-install.state"
+[[ -f "$STATE_FILE" ]] && source "$STATE_FILE"
+
+for module in "${MODULES[@]}"; do
+    [[ "${COMPLETED[$module]}" == "yes" ]] && continue
+    bash "$MODULE_PATH"
+    echo "COMPLETED[$module]=yes" >> "$STATE_FILE"
+done
+
 
 success "Installer finished"
