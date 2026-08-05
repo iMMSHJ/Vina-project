@@ -1,0 +1,4 @@
+---
+postgres_version: "16"
+odoo_db_user: odoo
+odoo_db_password: "{{ vault_odoo_db_password | default('ChangeMeInProduction') }}"

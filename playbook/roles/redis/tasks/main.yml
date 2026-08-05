@@ -1,0 +1,63 @@
+---
+- name: Install Redis server
+  ansible.builtin.apt:
+    name: redis-server
+    state: present
+
+- name: Enable and start Redis
+  ansible.builtin.systemd_service:
+    name: redis-server
+    enabled: true
+    state: started
+
+- name: Check redis.conf exists
+  ansible.builtin.stat:
+    path: /etc/redis/redis.conf
+  register: redis_conf
+
+- name: Bind Redis to localhost only
+  ansible.builtin.lineinfile:
+    path: /etc/redis/redis.conf
+    regexp: '^bind .*'
+    line: 'bind 127.0.0.1 ::1'
+  when: redis_conf.stat.exists
+  notify: restart redis
+
+- name: Enable protected-mode
+  ansible.builtin.lineinfile:
+    path: /etc/redis/redis.conf
+    regexp: '^protected-mode .*'
+    line: 'protected-mode yes'
+  when: redis_conf.stat.exists
+  notify: restart redis
+
+- name: Set maxmemory-policy (replace if active line exists)
+  ansible.builtin.lineinfile:
+    path: /etc/redis/redis.conf
+    regexp: '^maxmemory-policy .*'
+    line: 'maxmemory-policy allkeys-lru'
+  when: redis_conf.stat.exists
+  notify: restart redis
+
+- name: Append maxmemory-policy if not present
+  ansible.builtin.lineinfile:
+    path: /etc/redis/redis.conf
+    line: 'maxmemory-policy allkeys-lru'
+    insertafter: EOF
+  when:
+    - redis_conf.stat.exists
+    - "'maxmemory-policy' not in lookup('file', '/etc/redis/redis.conf')"
+  notify: restart redis
+
+- name: Flush handlers to apply Redis restart before test
+  ansible.builtin.meta: flush_handlers
+
+- name: Test Redis connectivity
+  ansible.builtin.command: redis-cli ping
+  register: redis_ping
+  changed_when: false
+
+- name: Assert Redis responded with PONG
+  ansible.builtin.assert:
+    that: "'PONG' in redis_ping.stdout"
+    fail_msg: "Redis test failed"

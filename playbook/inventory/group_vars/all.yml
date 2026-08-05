@@ -1,0 +1,23 @@
+---
+# System Settings
+timezone: Asia/Tehran
+locale: en_US.UTF-8
+
+# Odoo User Configuration
+odoo_user: odoo
+odoo_group: odoo
+odoo_home: /opt/odoo
+
+# PostgreSQL Configuration
+postgres_version: "16"
+odoo_db_user: odoo
+# استفاده از Ansible Vault برای رمز عبور:
+# ansible-vault create inventory/group_vars/vault.yml
+odoo_db_password: "{{ vault_odoo_db_password }}"
+
+# Network Configuration
+firewall_allowed_ports:
+  - 22    # SSH
+  - 80    # HTTP
+  - 443   # HTTPS
+  - 8069  # Odoo

@@ -1,0 +1,49 @@
+---
+- name: Install PostgreSQL and dependencies
+  ansible.builtin.apt:
+    name:
+      - postgresql
+      - postgresql-contrib
+      - libpq-dev
+      - python3-psycopg2
+    state: present
+    update_cache: true
+
+- name: Ensure PostgreSQL is started and enabled
+  ansible.builtin.service:
+    name: postgresql
+    state: started
+    enabled: true
+
+- name: Configure PostgreSQL to listen on localhost
+  ansible.builtin.lineinfile:
+    path: "/etc/postgresql/{{ postgres_version }}/main/postgresql.conf"
+    regexp: '^#?listen_addresses\s*='
+    line: "listen_addresses = 'localhost'"
+    state: present
+  notify: Restart PostgreSQL
+
+- name: Set password encryption to scram-sha-256
+  ansible.builtin.lineinfile:
+    path: "/etc/postgresql/{{ postgres_version }}/main/postgresql.conf"
+    regexp: '^#?password_encryption\s*='
+    line: "password_encryption = scram-sha-256"
+    state: present
+  notify: Restart PostgreSQL
+
+- name: Configure pg_hba.conf for local connections
+  ansible.builtin.lineinfile:
+    path: "/etc/postgresql/{{ postgres_version }}/main/pg_hba.conf"
+    regexp: '^local\s+all\s+all\s+'
+    line: "local   all             all                                     scram-sha-256"
+    state: present
+  notify: Restart PostgreSQL
+
+- name: Create Odoo PostgreSQL user
+  community.postgresql.postgresql_user:
+    name: "{{ odoo_db_user }}"
+    password: "{{ odoo_db_password }}"
+    role_attr_flags: CREATEDB,NOSUPERUSER
+    state: present
+  become: true
+  become_user: postgres

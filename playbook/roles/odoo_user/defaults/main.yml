@@ -1,0 +1,4 @@
+---
+odoo_user: odoo
+odoo_group: odoo
+odoo_home: /opt/odoo

@@ -1,0 +1,8 @@
+---
+- name: Install and configure Odoo 19
+  hosts: odoo_servers
+  become: true
+  
+  roles:
+    - odoo_user
+    - postgresql
