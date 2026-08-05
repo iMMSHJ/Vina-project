@@ -53,6 +53,7 @@ MODULES=(
     "00-preflight.sh"
     "07-odoo-source.sh"
     "08-odoo-config.sh"
+    "08b-odoo-db-init.sh"    # ← جدید
     "09-odoo-systemd.sh"
     "10-nginx.sh"
     "11-local-ssl.sh"
@@ -62,9 +63,9 @@ MODULES=(
     "15-logrotate.sh"
     "17-oca-install.sh"
     "18-addon-path.sh"
-    "19-database-init.sh"
     "16-healthcheck.sh"
 )
+
 # NOTE: 00-preflight.sh runs right after 06-python.sh (not at the
 # start, despite its "00" prefix) because it checks for build-essential
 # / python3.12-dev / libpq-dev / etc., which aren't installed until
