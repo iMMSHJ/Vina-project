@@ -34,14 +34,11 @@ openssl genrsa \
 
 
 openssl req \
--x509 \
 -new \
--nodes \
--key $SSL_DIR/localCA.key \
--sha256 \
--days 3650 \
--out $SSL_DIR/localCA.crt \
--subj "/C=DE/O=Vina Group/CN=Vina Local CA"
+-key $SSL_DIR/$DOMAIN.key \
+-out $SSL_DIR/$DOMAIN.csr \
+-subj "/C=${SSL_COUNTRY}/O=Vina Group/CN=$DOMAIN"
+
 
 fi
 
