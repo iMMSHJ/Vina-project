@@ -1,0 +1,76 @@
+---
+- name: Skip SSL setup if disabled
+  meta: end_play
+  when: not ssl_enable
+
+- name: Install openssl
+  apt:
+    name: openssl
+    state: present
+
+- name: Ensure SSL directory exists
+  file:
+    path: "{{ ssl_dir }}"
+    state: directory
+    mode: "0755"
+
+# --- 1. Local CA (اصلاح باگ اصلی: crt واقعاً تولید می‌شود) ---
+- name: Generate local CA private key
+  community.crypto.openssl_privatekey:
+    path: "{{ ssl_dir }}/localCA.key"
+    size: 4096
+  register: ca_key
+
+- name: Generate self-signed local CA certificate
+  community.crypto.x509_certificate:
+    path: "{{ ssl_dir }}/localCA.crt"
+    privatekey_path: "{{ ssl_dir }}/localCA.key"
+    provider: selfsigned
+    selfsigned_digest: sha256
+  when: ca_key.changed or not (ssl_dir + '/localCA.crt') is file
+
+# --- 2. Server key + CSR ---
+- name: Generate server private key
+  community.crypto.openssl_privatekey:
+    path: "{{ ssl_dir }}/{{ odoo_domain }}.key"
+    size: 2048
+  register: server_key
+
+- name: Generate server CSR
+  community.crypto.openssl_csr:
+    path: "{{ ssl_dir }}/{{ odoo_domain }}.csr"
+    privatekey_path: "{{ ssl_dir }}/{{ odoo_domain }}.key"
+    country_name: "{{ ssl_country }}"
+    organization_name: "Vina Group"
+    common_name: "{{ odoo_domain }}"
+    subject_alt_name: "DNS:{{ odoo_domain }}"
+
+# --- 3. Sign server certificate with local CA ---
+- name: Sign server certificate with local CA
+  community.crypto.x509_certificate:
+    path: "{{ ssl_dir }}/{{ odoo_domain }}.crt"
+    csr_path: "{{ ssl_dir }}/{{ odoo_domain }}.csr"
+    provider: ownca
+    ownca_path: "{{ ssl_dir }}/localCA.crt"
+    ownca_privatekey_path: "{{ ssl_dir }}/localCA.key"
+    ownca_not_after: +825d
+  when: server_key.changed
+
+- name: Restrict permissions on private keys
+  file:
+    path: "{{ item }}"
+    mode: "0600"
+  loop:
+    - "{{ ssl_dir }}/localCA.key"
+    - "{{ ssl_dir }}/{{ odoo_domain }}.key"
+
+# --- 4. Nginx vhost ---
+- name: Deploy Nginx site config with SSL
+  template:
+    src: odoo-ssl.conf.j2
+    dest: /etc/nginx/sites-available/odoo
+  notify: reload nginx
+
+- name: Test nginx config
+  command: nginx -t
+  changed_when: false

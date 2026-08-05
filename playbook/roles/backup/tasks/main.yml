@@ -1,0 +1,35 @@
+---
+- name: Skip backup setup if disabled
+  meta: end_play
+  when: not backup_enable
+
+- name: Create backup directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: odoo
+    group: odoo
+    mode: "0750"
+  loop:
+    - "{{ backup_dir }}/postgres"
+    - "{{ backup_dir }}/filestore"
+    - "{{ backup_dir }}/scripts"
+
+- name: Deploy backup script
+  template:
+    src: run-backup.sh.j2
+    dest: "{{ backup_dir }}/scripts/run-backup.sh"
+    owner: root
+    group: odoo
+    mode: "0750"
+
+- name: Deploy cron job
+  copy:
+    dest: /etc/cron.d/odoo-backup
+    content: |
+      {{ backup_cron_schedule }} root {{ backup_dir }}/scripts/run-backup.sh >> /opt/odoo/logs/backup.log 2>&1
+    mode: "0644"
+
+- name: Run initial backup
+  command: bash {{ backup_dir }}/scripts/run-backup.sh
+  changed_when: true

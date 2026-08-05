@@ -1,0 +1,10 @@
+---
+- name: reload nginx
+  ansible.builtin.command: nginx -t
+  changed_when: false
+  notify: restart nginx after test
+
+- name: restart nginx after test
+  ansible.builtin.systemd_service:
+    name: nginx
+    state: restarted

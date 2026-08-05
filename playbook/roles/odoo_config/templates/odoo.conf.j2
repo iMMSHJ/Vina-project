@@ -1,0 +1,30 @@
+[options]
+
+admin_passwd = {{ vault_odoo_admin_password }}
+
+db_host = False
+db_port = 5432
+db_user = odoo
+db_password = False
+
+addons_path = {{ odoo_source }}/odoo/addons,{{ odoo_custom_addons }},{{ odoo_oca }}
+
+data_dir = {{ odoo_home }}/data
+
+logfile = {{ odoo_home }}/logs/odoo.log
+
+http_port = 8069
+http_interface = 0.0.0.0
+
+proxy_mode = True
+
+workers = {{ odoo_workers }}
+max_cron_threads = {{ odoo_max_cron_threads }}
+limit_memory_hard = 2684354560
+limit_memory_soft = 2147483648
+limit_time_cpu = 600
+limit_time_real = 1200
+limit_request = 8192
+{% if odoo_dev_mode | default('no') == 'yes' %}
+dev_mode = reload,qweb,xml
+{% endif %}

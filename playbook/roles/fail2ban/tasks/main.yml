@@ -1,0 +1,26 @@
+---
+- name: Skip fail2ban setup if disabled
+  meta: end_play
+  when: not fail2ban_enable
+
+- name: Deploy jail.local
+  template:
+    src: jail.local.j2
+    dest: /etc/fail2ban/jail.local
+  register: jail_conf
+
+- name: Validate fail2ban configuration
+  command: fail2ban-client --test
+  changed_when: false
+
+- name: Restart fail2ban
+  systemd:
+    name: fail2ban
+    state: restarted
+  when: jail_conf.changed
+
+- name: Ensure fail2ban is active
+  systemd:
+    name: fail2ban
+    state: started
+    enabled: yes

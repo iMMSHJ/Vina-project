@@ -1,0 +1,38 @@
+---
+- name: Check if database already exists
+  command: >
+    psql -tAc "SELECT 1 FROM pg_database WHERE datname='{{ odoo_db_name }}'"
+  become: true
+  become_user: postgres
+  register: db_check
+  changed_when: false
+
+- name: Stop odoo service before init
+  systemd:
+    name: odoo
+    state: stopped
+  when: db_check.stdout | trim != "1"
+
+- name: Initialize database and install modules
+  command: >
+    {{ odoo_venv }}/bin/python {{ odoo_source }}/odoo-bin
+    -c /etc/odoo/odoo.conf
+    -d {{ odoo_db_name }}
+    -i {{ odoo_install_modules }}
+    --without-demo=all
+    --stop-after-init
+  become: true
+  become_user: "{{ odoo_user }}"
+  when: db_check.stdout | trim != "1"
+
+- name: Start odoo service
+  systemd:
+    name: odoo
+    state: started
+    enabled: yes
+  when: db_check.stdout | trim != "1"
+
+- name: Verify odoo service is active
+  command: systemctl is-active --quiet odoo
+  changed_when: false
+  when: db_check.stdout | trim != "1"

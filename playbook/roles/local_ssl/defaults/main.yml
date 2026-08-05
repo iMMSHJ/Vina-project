@@ -1,0 +1,6 @@
+ssl_enable: yes
+ssl_country: "IR"
+odoo_domain: "odoo.local"
+odoo_port: 8069
+longpolling_port: 8072
+ssl_dir: /etc/nginx/ssl

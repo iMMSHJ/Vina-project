@@ -1,0 +1,61 @@
+---
+- name: Create Odoo directory structure
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ odoo_user }}"
+    group: "{{ odoo_group }}"
+  loop:
+    - "{{ odoo_home }}/src"
+    - "{{ odoo_custom_addons }}"
+    - "{{ odoo_oca }}"
+    - "{{ odoo_home }}/data"
+    - "{{ odoo_home }}/logs"
+    - "{{ odoo_home }}/backup"
+
+- name: Check if Odoo source already cloned
+  ansible.builtin.stat:
+    path: "{{ odoo_source }}/.git"
+  register: odoo_git_dir
+
+- name: Clone Odoo source (shallow, only if missing)
+  ansible.builtin.git:
+    repo: "{{ odoo_repo }}"
+    dest: "{{ odoo_source }}"
+    version: "{{ odoo_branch }}"
+    depth: 1
+  when: not odoo_git_dir.stat.exists
+  # توجه: مطابق رفتار اسکریپت اصلی، در صورت وجود .git هیچ fetch/pull انجام نمی‌شود.
+
+- name: Validate Odoo source (release.py must exist)
+  ansible.builtin.stat:
+    path: "{{ odoo_source }}/odoo/release.py"
+  register: odoo_release_file
+
+- name: Fail if source validation fails
+  ansible.builtin.fail:
+    msg: "Odoo source validation failed"
+  when: not odoo_release_file.stat.exists
+
+- name: Check requirements.txt existence
+  ansible.builtin.stat:
+    path: "{{ odoo_source }}/requirements.txt"
+  register: odoo_requirements
+
+- name: Install Odoo Python requirements
+  ansible.builtin.pip:
+    requirements: "{{ odoo_source }}/requirements.txt"
+    virtualenv: "{{ odoo_venv }}"
+  when: odoo_requirements.stat.exists
+
+- name: Warn if requirements.txt missing
+  ansible.builtin.debug:
+    msg: "requirements.txt not found — skipping"
+  when: not odoo_requirements.stat.exists
+
+- name: Restore ownership on /opt/odoo (recursive)
+  ansible.builtin.file:
+    path: "{{ odoo_home }}"
+    owner: "{{ odoo_user }}"
+    group: "{{ odoo_group }}"
+    recurse: true

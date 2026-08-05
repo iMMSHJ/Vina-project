@@ -1,0 +1,3 @@
+backup_enable: yes
+backup_dir: /opt/odoo/backup
+backup_cron_schedule: "0 2 * * *"

@@ -1,0 +1,45 @@
+---
+- name: Find OCA repos containing __manifest__.py
+  find:
+    paths: "{{ oca_dir }}"
+    file_type: directory
+    depth: 1
+  register: oca_subdirs
+
+- name: Check each OCA repo for manifest files
+  find:
+    paths: "{{ item.path }}"
+    patterns: "__manifest__.py"
+    recurse: true
+  loop: "{{ oca_subdirs.files }}"
+  loop_control:
+    label: "{{ item.path }}"
+  register: manifest_check
+
+- name: Build final addons_path list
+  set_fact:
+    addons_path_list: >-
+      {{ [core_addons, custom_addons] +
+         (manifest_check.results
+          | selectattr('matched', 'gt', 0)
+          | map(attribute='item.path')
+          | list) }}
+
+- name: Remove existing addons_path line(s)
+  lineinfile:
+    path: "{{ odoo_conf }}"
+    regexp: '^addons_path\s*='
+    state: absent
+
+- name: Insert new addons_path after [options]
+  lineinfile:
+    path: "{{ odoo_conf }}"
+    insertafter: '^\[options\]'
+    line: "addons_path = {{ addons_path_list | join(',') }}"
+
+- name: Set ownership and permissions on odoo.conf
+  file:
+    path: "{{ odoo_conf }}"
+    owner: odoo
+    group: odoo
+    mode: "0640"

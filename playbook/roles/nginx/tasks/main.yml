@@ -1,0 +1,43 @@
+---
+- name: Skip Nginx setup entirely if disabled
+  ansible.builtin.meta: end_play
+  when: nginx_enable != "yes"
+
+- name: Install Nginx
+  ansible.builtin.apt:
+    name: nginx
+    state: present
+    update_cache: true
+
+- name: Deploy Odoo Nginx site config
+  ansible.builtin.template:
+    src: odoo-nginx.conf.j2
+    dest: /etc/nginx/sites-available/odoo
+    mode: "0644"
+  notify: reload nginx
+
+- name: Remove default enabled site
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+
+- name: Remove stale odoo.conf symlink (legacy naming)
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled/odoo.conf
+    state: absent
+
+- name: Enable Odoo site
+  ansible.builtin.file:
+    src: /etc/nginx/sites-available/odoo
+    dest: /etc/nginx/sites-enabled/odoo
+    state: link
+
+- name: Validate Nginx configuration
+  ansible.builtin.command: nginx -t
+  changed_when: false
+
+- name: Enable and start Nginx
+  ansible.builtin.systemd_service:
+    name: nginx
+    enabled: true
+    state: started
