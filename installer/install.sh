@@ -7,6 +7,10 @@
 set -Eeuo pipefail
 
 
+########################################
+# Base Directory
+########################################
+
 BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 
@@ -23,7 +27,97 @@ source "${BASE_DIR}/lib/functions.sh"
 # Load Configuration
 ########################################
 
-source "${BASE_DIR}/config/installer.conf"
+CONFIG_FILE="${BASE_DIR}/config/installer.conf"
+
+if [[ ! -f "$CONFIG_FILE" ]]; then
+    echo "ERROR: Configuration file not found: $CONFIG_FILE" >&2
+    exit 1
+fi
+
+source "$CONFIG_FILE"
+
+
+########################################
+# State and Lock
+########################################
+
+STATE_FILE="/var/log/odoo-install.state"
+LOCK_FILE="/var/lock/odoo-installer.lock"
+
+STATE_DIR="$(dirname "$STATE_FILE")"
+LOCK_DIR="$(dirname "$LOCK_FILE")"
+
+if [[ ! -d "$STATE_DIR" ]]; then
+    mkdir -p "$STATE_DIR"
+fi
+
+if [[ ! -d "$LOCK_DIR" ]]; then
+    mkdir -p "$LOCK_DIR"
+fi
+
+# Prevent concurrent installer executions.
+exec 9>"$LOCK_FILE"
+
+if ! flock -n 9; then
+    error "Another installer process is already running"
+    exit 1
+fi
+
+
+########################################
+# Completed Modules
+########################################
+
+declare -A COMPLETED=()
+
+
+########################################
+# Load State File
+########################################
+
+load_state() {
+    local module
+    local status
+
+    [[ -f "$STATE_FILE" ]] || return 0
+
+    while IFS='=' read -r module status; do
+        [[ -n "$module" ]] || continue
+        [[ "$status" == "yes" ]] || continue
+
+        # Accept only modules defined in MODULES.
+        for known_module in "${MODULES[@]}"; do
+            if [[ "$module" == "$known_module" ]]; then
+                COMPLETED["$module"]="yes"
+                break
+            fi
+        done
+    done < "$STATE_FILE"
+}
+
+
+########################################
+# Save Module State
+########################################
+
+mark_completed() {
+    local module="$1"
+    local tmp_state
+
+    COMPLETED["$module"]="yes"
+
+    tmp_state="${STATE_FILE}.tmp"
+
+    {
+        for completed_module in "${!COMPLETED[@]}"; do
+            if [[ "${COMPLETED[$completed_module]}" == "yes" ]]; then
+                printf '%s=yes\n' "$completed_module"
+            fi
+        done
+    } | sort > "$tmp_state"
+
+    mv -f "$tmp_state" "$STATE_FILE"
+}
 
 
 ########################################
@@ -53,7 +147,7 @@ MODULES=(
     "00-preflight.sh"
     "07-odoo-source.sh"
     "08-odoo-config.sh"
-    "08b-odoo-db-init.sh"    # ← جدید
+    "08b-odoo-db-init.sh"
     "09-odoo-systemd.sh"
     "10-nginx.sh"
     "11-local-ssl.sh"
@@ -66,48 +160,52 @@ MODULES=(
     "16-healthcheck.sh"
 )
 
-# NOTE: 00-preflight.sh runs right after 06-python.sh (not at the
-# start, despite its "00" prefix) because it checks for build-essential
-# / python3.12-dev / libpq-dev / etc., which aren't installed until
-# 06-python.sh runs. Its filename kept the "00" prefix for git history
-# reasons; only its position in this list determines execution order.
-#
-# NOTE: 16-healthcheck.sh was moved to run AFTER 17/18 (OCA + addons
-# path) instead of at position 16, since it's a read-only check and
-# makes more sense as the final step once everything is configured.
+
+########################################
+# Load Existing State
+########################################
+
+load_state
 
 
 ########################################
 # Run Modules
 ########################################
 
-for module in "${MODULES[@]}"
-do
+for module in "${MODULES[@]}"; do
 
     MODULE_PATH="${BASE_DIR}/modules/${module}"
 
-    if [[ -f "$MODULE_PATH" ]]; then
+    if [[ "${COMPLETED[$module]:-no}" == "yes" ]]; then
+        info "Skipping ${module}; already completed"
+        continue
+    fi
 
-        info "Running ${module}"
-
-        bash "$MODULE_PATH"
-
-    else
-
+    if [[ ! -f "$MODULE_PATH" ]]; then
         warning "${module} not found, skipping"
+        continue
+    fi
 
+    if [[ ! -r "$MODULE_PATH" ]]; then
+        error "Module is not readable: $MODULE_PATH"
+        exit 1
+    fi
+
+    info "Running ${module}"
+
+    if bash "$MODULE_PATH"; then
+        mark_completed "$module"
+        success "${module} completed"
+    else
+        error "${module} failed"
+        exit 1
     fi
 
 done
 
-STATE_FILE="/var/log/odoo-install.state"
-[[ -f "$STATE_FILE" ]] && source "$STATE_FILE"
 
-for module in "${MODULES[@]}"; do
-    [[ "${COMPLETED[$module]}" == "yes" ]] && continue
-    bash "$MODULE_PATH"
-    echo "COMPLETED[$module]=yes" >> "$STATE_FILE"
-done
-
+########################################
+# Finish
+########################################
 
 success "Installer finished"
