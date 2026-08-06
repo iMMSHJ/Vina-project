@@ -32,6 +32,12 @@
       - "RAM: {{ ansible_memtotal_mb }} MB"
       - "Free Disk on /: {{ ansible_mounts | selectattr('mount', 'equalto', '/') | map(attribute='size_available') | first | human_readable }}"
 
+- name: Install ping utility for preflight
+  ansible.builtin.apt:
+    name: iputils-ping
+    state: present
+    update_cache: true
+
 - name: Test internet connectivity
   command: ping -c 1 -W 2 8.8.8.8
   register: ping_result

@@ -1,10 +1,19 @@
 ---
-# site.yml — Master playbook (ترتیب اجرا مطابق install.sh:139-161 و README.md بخش ۳)
 - name: Install and configure Odoo 19 (Vina)
   hosts: odoo_servers
   become: true
 
+  vars_prompt:
+    - name: odoo_domain_input
+      prompt: "Enter Odoo backend IP or hostname"
+      private: no
+      default: "192.168.10.20"
+
   pre_tasks:
+    - name: Set Odoo backend address
+      ansible.builtin.set_fact:
+        odoo_domain: "{{ odoo_domain_input }}"
+
     - name: Run strict environment pre-checks (Ubuntu version, RAM, disk, network)
       ansible.builtin.import_tasks: tasks/preflight.yml
       tags: [preflight, always]
@@ -19,11 +28,13 @@
     - python                       # 06
     - role: preflight               # preflight (dependency validation) - بخش دوم، بعد از نصب python
       tasks_from: packages
-    - odoo_source                     # 07
-    - odoo_config                       # 08
-    - database_init                       # 08b
-    - odoo_systemd                          # 09
-    - nginx                                   # 10
+    - odoo_source
+    - odoo_config
+    - odoo_systemd
+    - vina_api
+    - database_init
+    - odoo_apps
+    - nginx
     - local_ssl                                 # 11
     - firewall                                    # 12
     - backup                                        # 13
@@ -32,6 +43,7 @@
     - oca_install                                         # 17
     - addon_path                                            # 18
     - healthcheck                                             # 16
+    - cleanup
 
   post_tasks:
     - name: Final checks and installation summary

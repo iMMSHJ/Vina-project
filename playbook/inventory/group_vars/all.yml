@@ -14,7 +14,7 @@ odoo_source: /opt/odoo/src/odoo
 odoo_venv: /opt/odoo/venv
 odoo_custom_addons: /opt/odoo/custom_addons
 oca_dir: /opt/odoo/oca
-odoo_domain: odoo.local
+odoo_domain: ""
 odoo_admin_user: admin
 
 # PostgreSQL Configuration

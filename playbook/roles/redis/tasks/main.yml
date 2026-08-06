@@ -39,15 +39,12 @@
   when: redis_conf.stat.exists
   notify: restart redis
 
-- name: Append maxmemory-policy if not present
+- name: Ensure maxmemory-policy is configured
   ansible.builtin.lineinfile:
     path: /etc/redis/redis.conf
+    regexp: '^#?\s*maxmemory-policy'
     line: 'maxmemory-policy allkeys-lru'
-    insertafter: EOF
-  when:
-    - redis_conf.stat.exists
-    - "'maxmemory-policy' not in lookup('file', '/etc/redis/redis.conf')"
-  notify: restart redis
+    state: present
 
 - name: Flush handlers to apply Redis restart before test
   ansible.builtin.meta: flush_handlers

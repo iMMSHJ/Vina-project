@@ -15,17 +15,17 @@
 
 - name: Check if Odoo source already cloned
   ansible.builtin.stat:
-    path: "{{ odoo_source }}/.git"
-  register: odoo_git_dir
+    path: "{{ odoo_source }}/odoo-bin"
+  register: odoo_source_exists
 
-- name: Clone Odoo source (shallow, only if missing)
+- name: Clone Odoo source (shallow)
   ansible.builtin.git:
     repo: "{{ odoo_repo }}"
     dest: "{{ odoo_source }}"
     version: "{{ odoo_branch }}"
     depth: 1
-  when: not odoo_git_dir.stat.exists
-  # توجه: مطابق رفتار اسکریپت اصلی، در صورت وجود .git هیچ fetch/pull انجام نمی‌شود.
+    single_branch: true
+  when: not odoo_source_exists.stat.exists
 
 - name: Validate Odoo source (release.py must exist)
   ansible.builtin.stat:

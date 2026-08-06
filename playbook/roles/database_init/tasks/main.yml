@@ -1,38 +1,23 @@
 ---
-- name: Check if database already exists
+- name: Check PostgreSQL user exists
   command: >
-    psql -tAc "SELECT 1 FROM pg_database WHERE datname='{{ odoo_db_name }}'"
+    psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='{{ odoo_db_user }}'"
   become: true
   become_user: postgres
-  register: db_check
+  register: db_user_check
   changed_when: false
 
-- name: Stop odoo service before init
-  systemd:
-    name: odoo
-    state: stopped
-  when: db_check.stdout | trim != "1"
 
-- name: Initialize database and install modules
+- name: Create Odoo PostgreSQL user
   command: >
-    {{ odoo_venv }}/bin/python {{ odoo_source }}/odoo-bin
-    -c /etc/odoo/odoo.conf
-    -d {{ odoo_db_name }}
-    -i {{ odoo_install_modules }}
-    --without-demo=all
-    --stop-after-init
+    psql -c "CREATE USER {{ odoo_db_user }} WITH PASSWORD '{{ odoo_db_password }}';"
   become: true
-  become_user: "{{ odoo_user }}"
-  when: db_check.stdout | trim != "1"
+  become_user: postgres
+  when: db_user_check.stdout | trim != "1"
 
-- name: Start odoo service
-  systemd:
-    name: odoo
-    state: started
-    enabled: yes
-  when: db_check.stdout | trim != "1"
 
-- name: Verify odoo service is active
-  command: systemctl is-active --quiet odoo
-  changed_when: false
-  when: db_check.stdout | trim != "1"
+- name: Allow PostgreSQL user createdb privilege
+  command: >
+    psql -c "ALTER USER {{ odoo_db_user }} CREATEDB;"
+  become: true
+  become_user: postgres

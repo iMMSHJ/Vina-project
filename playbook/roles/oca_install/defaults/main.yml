@@ -1,5 +1,6 @@
 oca_dir: /opt/odoo/oca
 oca_odoo_branch: "19.0"
+version: "{{ oca_branch }}"
 oca_repositories:
   - server-tools
   - web

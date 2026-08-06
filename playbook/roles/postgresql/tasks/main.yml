@@ -39,6 +39,17 @@
     state: present
   notify: Restart PostgreSQL
 
+- name: Install ACL package for privilege escalation
+  ansible.builtin.apt:
+    name: acl
+    state: present
+    update_cache: yes
+
+- name: Ensure PostgreSQL is running before user creation
+  ansible.builtin.service:
+    name: postgresql
+    state: started
+
 - name: Create Odoo PostgreSQL user
   community.postgresql.postgresql_user:
     name: "{{ odoo_db_user }}"
@@ -47,3 +58,5 @@
     state: present
   become: true
   become_user: postgres
+  vars:
+    ansible_ssh_pipelining: true
