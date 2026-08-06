@@ -1,8 +1,35 @@
 ---
-- name: Install and configure Odoo 19
-  hosts: odoo_servers
+- name: Ensure OCA root directory exists
+  file:
+    path: "{{ oca_dir }}"
+    state: directory
+    owner: odoo
+    group: odoo
+    mode: "0755"
+
+- name: Check if 19.0 branch exists for each repo
+  command: git ls-remote --heads "https://github.com/OCA/{{ item }}.git" refs/heads/{{ oca_odoo_branch }}
+  loop: "{{ oca_repositories }}"
+  register: branch_check
+  changed_when: false
+  failed_when: false
+
+- name: Clone OCA repositories (19.0 branch if available, else default)
+  git:
+    repo: "https://github.com/OCA/{{ item.item }}.git"
+    dest: "{{ oca_dir }}/{{ item.item }}"
+    depth: 1
+    version: "{{ oca_odoo_branch if item.stdout != '' else omit }}"
   become: true
-  
-  roles:
-    - odoo_user
-    - postgresql
+  become_user: odoo
+  loop: "{{ branch_check.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+
+- name: Ensure ownership of OCA directory
+  file:
+    path: "{{ oca_dir }}"
+    owner: odoo
+    group: odoo
+    recurse: true
+

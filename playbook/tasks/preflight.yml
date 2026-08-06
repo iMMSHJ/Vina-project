@@ -1,0 +1,32 @@
+---
+# tasks/preflight.yml
+- name: Verify Ubuntu 24.04 LTS
+  assert:
+    that:
+      - ansible_distribution == "Ubuntu"
+      - ansible_distribution_version == "24.04"
+    fail_msg: "This playbook requires Ubuntu 24.04 LTS"
+
+- name: Check minimum RAM (2GB recommended)
+  assert:
+    that:
+      - ansible_memtotal_mb >= 1800
+    fail_msg: "Minimum 2GB RAM required"
+
+- name: Check minimum disk space (10GB)
+  assert:
+    that:
+      - ansible_mounts | selectattr('mount', 'equalto', '/') | map(attribute='size_available') | first > 10737418240
+    fail_msg: "Minimum 10GB free disk space required"
+
+- name: Check network connectivity
+  uri:
+    url: https://github.com
+    timeout: 5
+  register: network_check
+  failed_when: false
+
+- name: Warn if network unavailable
+  debug:
+    msg: "WARNING: Cannot reach GitHub. OCA installation may fail."
+  when: network_check.status != 200

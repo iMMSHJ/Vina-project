@@ -1,0 +1,42 @@
+---
+# tasks/final_check.yml
+- name: Wait for Odoo service to stabilize
+  wait_for:
+    port: 8069
+    delay: 5
+    timeout: 60
+
+- name: Check Odoo HTTP response
+  uri:
+    url: "http://localhost:8069"
+    return_content: false
+  register: odoo_http
+  failed_when: false
+
+- name: Check Nginx proxy (if enabled)
+  uri:
+    url: "https://{{ odoo_domain }}"
+    validate_certs: false
+    return_content: false
+  register: nginx_https
+  failed_when: false
+  when: nginx_enable and ssl_enable
+
+- name: Print installation summary
+  debug:
+    msg:
+      - "========================================="
+      - "Odoo 19 Installation Complete"
+      - "========================================="
+      - "Odoo URL: http://{{ odoo_domain }}:8069"
+      - "Admin user: {{ odoo_admin_user }}"
+      - "Database: {{ odoo_db_name }}"
+      - "Nginx HTTPS: {{ 'Enabled' if (nginx_enable and ssl_enable) else 'Disabled' }}"
+      - "Backup: {{ 'Enabled' if backup_enable else 'Disabled' }}"
+      - "OCA Modules: Installed in {{ oca_dir }}"
+      - "========================================="
+      - "Next steps:"
+      - "1. Access Odoo at the URL above"
+      - "2. Create your first database (or run init_database.yml)"
+      - "3. Review logs: /opt/odoo/logs/"
+      - "========================================="
