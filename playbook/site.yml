@@ -4,48 +4,179 @@
   become: true
 
   vars_prompt:
-    - name: odoo_domain_input
-      prompt: "Enter Odoo backend IP or hostname"
-      private: no
-      default: "192.168.10.20"
+    - name: backend_ip_input
+      prompt: "Enter backend internal IP address"
+      private: false
+
+    - name: backend_hostname_input
+      prompt: "Enter backend internal hostname"
+      private: false
+      default: "odoo.internal"
+
 
   pre_tasks:
-    - name: Set Odoo backend address
-      ansible.builtin.set_fact:
-        odoo_domain: "{{ odoo_domain_input }}"
 
-    - name: Run strict environment pre-checks (Ubuntu version, RAM, disk, network)
-      ansible.builtin.import_tasks: tasks/preflight.yml
-      tags: [preflight, always]
+    - name: Set backend network identity
+      ansible.builtin.set_fact:
+        odoo_backend_ip: "{{ backend_ip_input }}"
+        odoo_backend_hostname: "{{ backend_hostname_input }}"
+        odoo_domain: "{{ backend_hostname_input }}"
+      tags:
+        - always
+
+
+    - name: Debug backend variables
+      ansible.builtin.debug:
+        msg:
+          - "BACKEND IP   = {{ odoo_backend_ip }}"
+          - "BACKEND HOST = {{ odoo_backend_hostname }}"
+          - "ODOO DOMAIN  = {{ odoo_domain }}"
+      tags:
+        - always
+
+
+    - name: Run strict environment pre-checks
+      ansible.builtin.import_tasks:
+        file: tasks/preflight.yml
+      tags:
+        - preflight
+        - always
+
+
 
   roles:
-    - preflight          # 00-precheck + 00-preflight (بخش اول: بررسی OS/سخت‌افزار)
-    - bootstrap           # 01
-    - system_update        # 02
-    - odoo_user              # 03
-    - postgresql               # 04
-    - redis                      # 05
-    - python                       # 06
-    - role: preflight               # preflight (dependency validation) - بخش دوم، بعد از نصب python
+
+    # Base OS
+    - role: preflight
+      tags:
+        - preflight
+
+    - role: bootstrap
+      tags:
+        - bootstrap
+
+    - role: system_update
+      tags:
+        - system
+
+
+    # Users / Database
+    - role: odoo_user
+      tags:
+        - odoo_user
+
+    - role: postgresql
+      tags:
+        - postgresql
+
+
+    # Runtime
+    - role: redis
+      tags:
+        - redis
+
+    - role: python
+      tags:
+        - python
+
+
+    # Validate packages after python
+    - role: preflight
       tasks_from: packages
-    - odoo_source
-    - odoo_config
-    - odoo_systemd
-    - vina_api
-    - database_init
-    - odoo_apps
-    - nginx
-    - local_ssl                                 # 11
-    - firewall                                    # 12
-    - backup                                        # 13
-    - fail2ban                                        # 14 (security)
-    - logrotate                                         # 15
-    - oca_install                                         # 17
-    - addon_path                                            # 18
-    - healthcheck                                             # 16
-    - cleanup
+      tags:
+        - packages
+
+
+    # Odoo core
+    - role: odoo_source
+      tags:
+        - odoo_source
+
+    - role: odoo_config
+      tags:
+        - odoo_config
+
+    - role: odoo_systemd
+      tags:
+        - systemd
+
+
+    # Vina backend API
+    - role: vina_api
+      tags:
+        - api
+
+
+    # Database initialization
+    - role: database_init
+      tags:
+        - database
+
+
+    # Default Odoo applications
+    - role: odoo_apps
+      tags:
+        - apps
+
+
+    # Reverse proxy
+    - role: nginx
+      tags:
+        - nginx
+
+
+    # Internal CA + HTTPS
+    - role: local_ssl
+      tags:
+        - local_ssl
+
+
+    # Security
+    - role: firewall
+      tags:
+        - firewall
+
+    - role: backup
+      tags:
+        - backup
+
+    - role: fail2ban
+      tags:
+        - fail2ban
+
+    - role: logrotate
+      tags:
+        - logrotate
+
+
+    # OCA
+    - role: oca_install
+      tags:
+        - oca
+
+    - role: addon_path
+      tags:
+        - addons
+
+
+    # Validation
+    - role: healthcheck
+      tags:
+        - healthcheck
+
+
+    # Cleanup
+    - role: cleanup
+      tags:
+        - cleanup
+
+
 
   post_tasks:
+
     - name: Final checks and installation summary
-      ansible.builtin.import_tasks: tasks/final_check.yml
-      tags: [final_check, always]
+      ansible.builtin.import_tasks:
+        file: tasks/final_check.yml
+      tags:
+        - final_check
+        - always

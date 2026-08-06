@@ -2,75 +2,110 @@
 - name: Skip SSL setup if disabled
   meta: end_play
   when: not ssl_enable
+- name: Skip SSL setup if disabled
+  meta: end_play
+  when: not ssl_enable
 
-- name: Install openssl
+
+- name: Install SSL packages
   apt:
-    name: openssl
+    name:
+      - openssl
+      - python3-cryptography
     state: present
+
 
 - name: Ensure SSL directory exists
   file:
     path: "{{ ssl_dir }}"
     state: directory
+    owner: root
+    group: root
     mode: "0755"
 
-# --- 1. Local CA (اصلاح باگ اصلی: crt واقعاً تولید می‌شود) ---
-- name: Generate local CA private key
+
+# ==========================
+# Internal CA
+# ==========================
+
+- name: Generate internal CA private key
   community.crypto.openssl_privatekey:
-    path: "{{ ssl_dir }}/localCA.key"
+    path: "{{ ssl_dir }}/vina-ca.key"
     size: 4096
-  register: ca_key
 
-- name: Generate self-signed local CA certificate
+
+- name: Generate internal CA certificate
   community.crypto.x509_certificate:
-    path: "{{ ssl_dir }}/localCA.crt"
-    privatekey_path: "{{ ssl_dir }}/localCA.key"
+    path: "{{ ssl_dir }}/vina-ca.crt"
+    privatekey_path: "{{ ssl_dir }}/vina-ca.key"
     provider: selfsigned
-    selfsigned_digest: sha256
-  when: ca_key.changed or not (ssl_dir + '/localCA.crt') is file
+    selfsigned_not_after: "+3650d"
 
-# --- 2. Server key + CSR ---
-- name: Generate server private key
+
+# ==========================
+# Server Certificate
+# ==========================
+
+
+- name: Generate backend private key
   community.crypto.openssl_privatekey:
-    path: "{{ ssl_dir }}/{{ odoo_domain }}.key"
+    path: "{{ ssl_dir }}/{{ odoo_ssl_name }}.key"
     size: 2048
-  register: server_key
 
-- name: Generate server CSR
+
+- name: Generate backend CSR
   community.crypto.openssl_csr:
-    path: "{{ ssl_dir }}/{{ odoo_domain }}.csr"
-    privatekey_path: "{{ ssl_dir }}/{{ odoo_domain }}.key"
+    path: "{{ ssl_dir }}/{{ odoo_ssl_name }}.csr"
+    privatekey_path: "{{ ssl_dir }}/{{ odoo_ssl_name }}.key"
     country_name: "{{ ssl_country }}"
     organization_name: "Vina Group"
-    common_name: "{{ odoo_domain }}"
-    subject_alt_name: "DNS:{{ odoo_domain }}"
+    common_name: "{{ odoo_backend_ip }}"
+    subject_alt_name:
+      - "IP:{{ odoo_backend_ip }}"
+      - "DNS:{{ odoo_backend_hostname }}"
 
-# --- 3. Sign server certificate with local CA ---
-- name: Sign server certificate with local CA
+- name: Sign backend certificate
   community.crypto.x509_certificate:
-    path: "{{ ssl_dir }}/{{ odoo_domain }}.crt"
-    csr_path: "{{ ssl_dir }}/{{ odoo_domain }}.csr"
+    path: "{{ ssl_dir }}/{{ odoo_ssl_name }}.crt"
+    csr_path: "{{ ssl_dir }}/{{ odoo_ssl_name }}.csr"
     provider: ownca
-    ownca_path: "{{ ssl_dir }}/localCA.crt"
-    ownca_privatekey_path: "{{ ssl_dir }}/localCA.key"
-    ownca_not_after: +825d
-  when: server_key.changed
+    ownca_path: "{{ ssl_dir }}/vina-ca.crt"
+    ownca_privatekey_path: "{{ ssl_dir }}/vina-ca.key"
+    ownca_not_after: "+825d"
 
-- name: Restrict permissions on private keys
+
+- name: Secure SSL private keys
   file:
     path: "{{ item }}"
     mode: "0600"
   loop:
-    - "{{ ssl_dir }}/localCA.key"
-    - "{{ ssl_dir }}/{{ odoo_domain }}.key"
+    - "{{ ssl_dir }}/vina-ca.key"
+    - "{{ ssl_dir }}/{{ odoo_ssl_name }}.key"
 
-# --- 4. Nginx vhost ---
-- name: Deploy Nginx site config with SSL
+
+
+# ==========================
+# Nginx SSL
+# ==========================
+
+
+- name: Deploy nginx SSL config
   template:
     src: odoo-ssl.conf.j2
     dest: /etc/nginx/sites-available/odoo
-  notify: reload nginx
+  notify:
+    - reload nginx
 
-- name: Test nginx config
-  command: nginx -t
+
+- name: Enable nginx site
+  file:
+    src: /etc/nginx/sites-available/odoo
+    dest: /etc/nginx/sites-enabled/odoo
+    state: link
+    force: yes
+
+
+- name: Validate nginx
+  command:
+    nginx -t
   changed_when: false

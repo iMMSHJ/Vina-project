@@ -1,7 +1,6 @@
 server {
     listen 80;
-    server_name {{ odoo_domain }};
-
+    server_name {{ odoo_backend_hostname }};
     location /websocket {
         proxy_pass http://127.0.0.1:8072;
 

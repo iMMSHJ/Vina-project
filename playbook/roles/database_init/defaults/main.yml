@@ -1,5 +1,2 @@
-odoo_db_name: odoo
-odoo_user: odoo
-odoo_venv: /opt/odoo/venv
-odoo_source: /opt/odoo/src/odoo
-odoo_install_modules: "base"
+odoo_db_user: odoo
+odoo_db_password: ""

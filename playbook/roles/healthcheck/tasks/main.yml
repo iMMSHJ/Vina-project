@@ -35,7 +35,7 @@
 
 - name: Check HTTPS redirect for Odoo domain
   uri:
-    url: "https://{{ odoo_domain }}"
+    url: "https://{{ odoo_backend_ip }}"
     validate_certs: false
     return_content: true
   register: https_check

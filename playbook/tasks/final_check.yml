@@ -1,34 +1,42 @@
 ---
 # tasks/final_check.yml
+
 - name: Wait for Odoo service to stabilize
-  wait_for:
+  ansible.builtin.wait_for:
     port: 8069
     delay: 5
     timeout: 60
 
+
 - name: Check Odoo HTTP response
-  uri:
-    url: "http://localhost:8069"
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:8069"
     return_content: false
   register: odoo_http
   failed_when: false
 
+
 - name: Check Nginx proxy (if enabled)
-  uri:
-    url: "https://{{ odoo_domain }}"
+  ansible.builtin.uri:
+    url: "https://{{ odoo_backend_ip }}"
     validate_certs: false
     return_content: false
   register: nginx_https
   failed_when: false
-  when: nginx_enable and ssl_enable
+  when:
+    - nginx_enable
+    - ssl_enable
+
 
 - name: Print installation summary
-  debug:
+  ansible.builtin.debug:
     msg:
       - "========================================="
       - "Odoo 19 Installation Complete"
       - "========================================="
-      - "Odoo URL: http://{{ odoo_domain }}:8069"
+      - "Backend IP: {{ odoo_backend_ip }}"
+      - "HTTPS Endpoint: https://{{ odoo_backend_ip }}"
+      - "Odoo Internal Port: 8069 (private only)"
       - "Admin user: {{ odoo_admin_user }}"
       - "Database: {{ odoo_db_name }}"
       - "Nginx HTTPS: {{ 'Enabled' if (nginx_enable and ssl_enable) else 'Disabled' }}"
@@ -36,7 +44,7 @@
       - "OCA Modules: Installed in {{ oca_dir }}"
       - "========================================="
       - "Next steps:"
-      - "1. Access Odoo at the URL above"
-      - "2. Create your first database (or run init_database.yml)"
+      - "1. Import internal CA certificate to clients"
+      - "2. Configure FastAPI backend connection"
       - "3. Review logs: /opt/odoo/logs/"
       - "========================================="

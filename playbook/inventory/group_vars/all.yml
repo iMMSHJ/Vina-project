@@ -5,7 +5,12 @@ locale: en_US.UTF-8
 
 # Odoo User Configuration
 odoo_user: odoo
-odoo_group: odoo
+# Backend internal network
+odoo_backend_ip: ""
+# Backend internal network
+# Values are provided during installation via vars_prompt
+odoo_backend_hostname: odoo.internal
+odoo_ssl_name: ""
 odoo_home: /opt/odoo
 
 # Odoo Paths (متغیرهای مشترک بین چند نقش - عمداً در سطح all.yml تعریف شده‌اند
@@ -14,12 +19,13 @@ odoo_source: /opt/odoo/src/odoo
 odoo_venv: /opt/odoo/venv
 odoo_custom_addons: /opt/odoo/custom_addons
 oca_dir: /opt/odoo/oca
-odoo_domain: ""
 odoo_admin_user: admin
 
 # PostgreSQL Configuration
 postgres_version: "16"
 odoo_db_user: odoo
+# Odoo Database Manager Master Password
+odoo_master_password: "{{ vault_odoo_master_password }}"
 # استفاده از Ansible Vault برای رمز عبور:
 # ansible-vault create inventory/group_vars/vault.yml
 # مقدار پیش‌فرض فقط برای dry-run/تست است؛ در محیط واقعی حتماً vault_odoo_db_password
@@ -29,6 +35,4 @@ odoo_db_password: "{{ vault_odoo_db_password | default('ChangeMeInProduction') }
 # Network Configuration
 firewall_allowed_ports:
   - 22    # SSH
-  - 80    # HTTP
   - 443   # HTTPS
-  - 8069  # Odoo

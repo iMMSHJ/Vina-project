@@ -1,23 +1,9 @@
 ---
-- name: Check PostgreSQL user exists
-  command: >
-    psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='{{ odoo_db_user }}'"
-  become: true
-  become_user: postgres
-  register: db_user_check
-  changed_when: false
-
-
-- name: Create Odoo PostgreSQL user
-  command: >
-    psql -c "CREATE USER {{ odoo_db_user }} WITH PASSWORD '{{ odoo_db_password }}';"
-  become: true
-  become_user: postgres
-  when: db_user_check.stdout | trim != "1"
-
-
-- name: Allow PostgreSQL user createdb privilege
-  command: >
-    psql -c "ALTER USER {{ odoo_db_user }} CREATEDB;"
+- name: Ensure PostgreSQL user exists
+  community.postgresql.postgresql_user:
+    name: "{{ odoo_db_user }}"
+    password: "{{ odoo_db_password }}"
+    role_attr_flags: CREATEDB
+    state: present
   become: true
   become_user: postgres
