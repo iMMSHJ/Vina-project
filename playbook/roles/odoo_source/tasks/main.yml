@@ -8,7 +8,7 @@
   loop:
     - "{{ odoo_home }}/src"
     - "{{ odoo_custom_addons }}"
-    - "{{ odoo_oca }}"
+    - "{{ oca_dir }}"
     - "{{ odoo_home }}/data"
     - "{{ odoo_home }}/logs"
     - "{{ odoo_home }}/backup"

@@ -1,35 +1,39 @@
 ---
-- name: Ensure OCA root directory exists
-  file:
-    path: "{{ oca_dir }}"
-    state: directory
-    owner: odoo
-    group: odoo
-    mode: "0755"
-
-- name: Check if 19.0 branch exists for each repo
-  command: git ls-remote --heads "https://github.com/OCA/{{ item }}.git" refs/heads/{{ oca_odoo_branch }}
-  loop: "{{ oca_repositories }}"
-  register: branch_check
-  changed_when: false
-  failed_when: false
-
-- name: Clone OCA repositories (19.0 branch if available, else default)
-  git:
-    repo: "https://github.com/OCA/{{ item.item }}.git"
-    dest: "{{ oca_dir }}/{{ item.item }}"
-    depth: 1
-    version: "{{ oca_odoo_branch if item.stdout != '' else omit }}"
+# site.yml — Master playbook (ترتیب اجرا مطابق install.sh:139-161 و README.md بخش ۳)
+- name: Install and configure Odoo 19 (Vina)
+  hosts: odoo_servers
   become: true
-  become_user: odoo
-  loop: "{{ branch_check.results }}"
-  loop_control:
-    label: "{{ item.item }}"
 
-- name: Ensure ownership of OCA directory
-  file:
-    path: "{{ oca_dir }}"
-    owner: odoo
-    group: odoo
-    recurse: true
+  pre_tasks:
+    - name: Run strict environment pre-checks (Ubuntu version, RAM, disk, network)
+      ansible.builtin.import_tasks: tasks/preflight.yml
+      tags: [preflight, always]
 
+  roles:
+    - preflight          # 00-precheck + 00-preflight (بخش اول: بررسی OS/سخت‌افزار)
+    - bootstrap           # 01
+    - system_update        # 02
+    - odoo_user              # 03
+    - postgresql               # 04
+    - redis                      # 05
+    - python                       # 06
+    - role: preflight               # preflight (dependency validation) - بخش دوم، بعد از نصب python
+      tasks_from: packages
+    - odoo_source                     # 07
+    - odoo_config                       # 08
+    - database_init                       # 08b
+    - odoo_systemd                          # 09
+    - nginx                                   # 10
+    - local_ssl                                 # 11
+    - firewall                                    # 12
+    - backup                                        # 13
+    - fail2ban                                        # 14 (security)
+    - logrotate                                         # 15
+    - oca_install                                         # 17
+    - addon_path                                            # 18
+    - healthcheck                                             # 16
+
+  post_tasks:
+    - name: Final checks and installation summary
+      ansible.builtin.import_tasks: tasks/final_check.yml
+      tags: [final_check, always]

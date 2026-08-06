@@ -1,7 +1,7 @@
 ---
 - name: Skip Nginx setup entirely if disabled
   ansible.builtin.meta: end_play
-  when: nginx_enable != "yes"
+  when: not nginx_enable
 
 - name: Install Nginx
   ansible.builtin.apt:

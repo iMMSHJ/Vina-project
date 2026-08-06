@@ -123,10 +123,10 @@ odoo_core_modules:
 
 # Paths
 odoo_home: /opt/odoo
-odoo_source_dir: /opt/odoo/src/odoo
+odoo_source: /opt/odoo/src/odoo
 odoo_venv: /opt/odoo/venv
 odoo_custom_addons: /opt/odoo/custom_addons
-odoo_oca: /opt/odoo/oca
+oca_dir: /opt/odoo/oca
 
 # Linux User
 odoo_user: odoo

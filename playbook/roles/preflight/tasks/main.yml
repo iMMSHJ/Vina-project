@@ -1,6 +1,6 @@
 ---
 # roles/preflight/tasks/main.yml
-# ترکیب منطق 00-precheck.sh و 00-preflight.sh
+# 00-precheck.sh + 00-preflight.sh — بخش اول: بررسی OS/سخت‌افزار/شبکه (زودتر از نصب هر بسته‌ای اجرا می‌شود)
 
 - name: Check if running as root (via become)
   assert:
@@ -42,56 +42,6 @@
   debug:
     msg: "{{ 'Internet connection OK' if ping_result.rc == 0 else 'WARNING: Internet connection failed' }}"
 
-- name: Check critical build packages (preflight)
-  package_facts:
-    manager: apt
-
-- name: Verify build-essential presence
-  assert:
-    that: "'build-essential' in ansible_facts.packages"
-    fail_msg: "Missing package: build-essential"
-
-- name: Verify pkg-config presence
-  assert:
-    that: "'pkg-config' in ansible_facts.packages"
-    fail_msg: "Missing package: pkg-config"
-
-- name: Verify python3.12-dev presence
-  assert:
-    that: "'python3.12-dev' in ansible_facts.packages"
-    fail_msg: "Missing package: python3.12-dev"
-
-- name: Verify python3.12-venv presence
-  assert:
-    that: "'python3.12-venv' in ansible_facts.packages"
-    fail_msg: "Missing package: python3.12-venv"
-
-- name: Verify libpq-dev presence
-  assert:
-    that: "'libpq-dev' in ansible_facts.packages"
-    fail_msg: "Missing package: libpq-dev"
-
-- name: Verify libldap2-dev presence
-  assert:
-    that: "'libldap2-dev' in ansible_facts.packages"
-    fail_msg: "Missing package: libldap2-dev"
-
-- name: Verify libsasl2-dev presence
-  assert:
-    that: "'libsasl2-dev' in ansible_facts.packages"
-    fail_msg: "Missing package: libsasl2-dev"
-
-- name: Check Python header file
-  stat:
-    path: /usr/include/python3.12/Python.h
-  register: python_header
-
-- name: Assert Python header exists
-  assert:
-    that: python_header.stat.exists
-    fail_msg: "Python headers missing at /usr/include/python3.12/Python.h"
-    success_msg: "System requirements satisfied"
-
-- name: Preflight summary
+- name: Preflight (stage 1) summary
   debug:
-    msg: "✓ Pre-check and preflight completed successfully"
+    msg: "✓ Pre-check (OS/hardware/network) completed successfully"

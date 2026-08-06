@@ -9,7 +9,7 @@
     - "{{ odoo_home }}/data"
     - "{{ odoo_home }}/logs"
     - "{{ odoo_custom_addons }}"
-    - "{{ odoo_oca }}"
+    - "{{ oca_dir }}"
     - "{{ odoo_conf_dir }}"   # /etc/odoo
 
 - name: Determine worker count based on CPU cores

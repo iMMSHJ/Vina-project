@@ -1,13 +1,13 @@
 [options]
 
-admin_passwd = {{ vault_odoo_admin_password }}
+admin_passwd = {{ vault_odoo_admin_password | default('ChangeMeInProduction') }}
 
 db_host = False
 db_port = 5432
 db_user = odoo
 db_password = False
 
-addons_path = {{ odoo_source }}/odoo/addons,{{ odoo_custom_addons }},{{ odoo_oca }}
+addons_path = {{ odoo_source }}/odoo/addons,{{ odoo_custom_addons }},{{ oca_dir }}
 
 data_dir = {{ odoo_home }}/data
 

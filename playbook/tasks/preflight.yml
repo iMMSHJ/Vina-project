@@ -29,4 +29,4 @@
 - name: Warn if network unavailable
   debug:
     msg: "WARNING: Cannot reach GitHub. OCA installation may fail."
-  when: network_check.status != 200
+  when: (network_check.status | default(0)) != 200

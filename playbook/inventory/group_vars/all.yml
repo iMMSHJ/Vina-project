@@ -8,12 +8,23 @@ odoo_user: odoo
 odoo_group: odoo
 odoo_home: /opt/odoo
 
+# Odoo Paths (متغیرهای مشترک بین چند نقش - عمداً در سطح all.yml تعریف شده‌اند
+# تا صرف نظر از ترتیب اجرای نقش‌ها در site.yml، از همان ابتدای play در دسترس باشند)
+odoo_source: /opt/odoo/src/odoo
+odoo_venv: /opt/odoo/venv
+odoo_custom_addons: /opt/odoo/custom_addons
+oca_dir: /opt/odoo/oca
+odoo_domain: odoo.local
+odoo_admin_user: admin
+
 # PostgreSQL Configuration
 postgres_version: "16"
 odoo_db_user: odoo
 # استفاده از Ansible Vault برای رمز عبور:
 # ansible-vault create inventory/group_vars/vault.yml
-odoo_db_password: "{{ vault_odoo_db_password }}"
+# مقدار پیش‌فرض فقط برای dry-run/تست است؛ در محیط واقعی حتماً vault_odoo_db_password
+# را از طریق vault.yml ست کنید.
+odoo_db_password: "{{ vault_odoo_db_password | default('ChangeMeInProduction') }}"
 
 # Network Configuration
 firewall_allowed_ports:

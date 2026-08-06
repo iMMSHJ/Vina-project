@@ -20,9 +20,9 @@
     group: "{{ odoo_group }}"
   loop:
     - "{{ odoo_home }}"
-    - "{{ odoo_source_dir }}"
+    - "{{ odoo_source }}"
     - "{{ odoo_custom_addons }}"
-    - "{{ odoo_oca }}"
+    - "{{ oca_dir }}"
 
 - name: Set recursive ownership on Odoo home (pass 1)
   ansible.builtin.file:
