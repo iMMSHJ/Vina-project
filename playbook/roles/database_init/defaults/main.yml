@@ -1,2 +1,6 @@
+---
 odoo_db_user: odoo
 odoo_db_password: ""
+# Kept here only for the installation summary in tasks/final_check.yml —
+# the actual database is created later by the browser wizard, not here.
+odoo_db_name: odoo

@@ -25,6 +25,23 @@
   loop: "{{ branch_check.results }}"
   loop_control:
     label: "{{ item.item }}"
+  register: oca_clone_result
+  retries: 5
+  delay: 10
+  until: oca_clone_result is succeeded
+  ignore_errors: true
+
+- name: Report OCA repositories that failed to clone
+  ansible.builtin.debug:
+    msg: >-
+      WARNING: the following OCA repos could not be cloned after retries
+      (likely a transient GitHub/network issue) and were skipped:
+      {{ oca_clone_result.results
+         | selectattr('failed', 'defined')
+         | selectattr('failed')
+         | map(attribute='item.item')
+         | list }}
+  when: oca_clone_result.results | selectattr('failed', 'defined') | selectattr('failed') | list | length > 0
 
 - name: Ensure ownership of OCA directory
   file:

@@ -1,9 +1,21 @@
 ---
-- name: Ensure PostgreSQL user exists
+# roles/database_init/tasks/main.yml
+#
+# We deliberately do NOT create/initialize the actual Odoo database here.
+# We only make sure PostgreSQL has a role for Odoo with the right password
+# and CREATEDB privilege. The real database is created by the user the
+# first time they open the instance in a browser: Odoo shows its normal
+# "Create Database" wizard (Master Password / DB Name / Email / Password /
+# Language / Country / Demo data) and creates the database itself using
+# db_user/db_password from odoo.conf. This matches stock Odoo behavior and
+# avoids ending up with a pre-baked user nobody set themselves.
+
+- name: Ensure PostgreSQL role for Odoo exists
   community.postgresql.postgresql_user:
     name: "{{ odoo_db_user }}"
     password: "{{ odoo_db_password }}"
-    role_attr_flags: CREATEDB
+    role_attr_flags: CREATEDB,NOSUPERUSER
     state: present
   become: true
   become_user: postgres
+  no_log: true

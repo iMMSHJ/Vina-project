@@ -27,9 +27,12 @@ odoo_db_user: odoo
 # Odoo Database Manager Master Password
 odoo_master_password: "{{ vault_odoo_master_password }}"
 # استفاده از Ansible Vault برای رمز عبور:
-# ansible-vault create inventory/group_vars/vault.yml
+# ansible-vault create inventory/group_vars/all/vault.yml
 # مقدار پیش‌فرض فقط برای dry-run/تست است؛ در محیط واقعی حتماً vault_odoo_db_password
 # را از طریق vault.yml ست کنید.
+# نکته: odoo_db_name و odoo_db_password در ابتدای اجرا از طریق vars_prompt در
+# site.yml گرفته می‌شوند و مقادیر زیر را override می‌کنند (این‌ها فقط fallback هستند).
+odoo_db_name: odoo
 odoo_db_password: "{{ vault_odoo_db_password | default('ChangeMeInProduction') }}"
 
 # Network Configuration

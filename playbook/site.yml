@@ -1,182 +1,109 @@
 ---
-- name: Install and configure Odoo 19 (Vina)
+# ==========================================
+# Stage 1: Install Odoo base + pause for database creation
+# ==========================================
+- name: Stage 1 - Install Odoo base
   hosts: odoo_servers
   become: true
 
   vars_prompt:
-    - name: backend_ip_input
-      prompt: "Enter backend internal IP address"
+    - name: admin_passwd
+      prompt: "Master Password for Wizard"
+      private: true
+      confirm: true
+
+    - name: odoo_backend_ip
+      prompt: |
+        Please enter internal server IP (example: 192.168.10.50)
+        ⚠️ This IP is used for SSL certificate and Nginx configuration.
       private: false
 
-    - name: backend_hostname_input
-      prompt: "Enter backend internal hostname"
-      private: false
+    - name: odoo_backend_hostname
+      prompt: "Internal hostname (default: odoo.internal)"
       default: "odoo.internal"
+      private: false
 
+    - name: db_name
+      prompt: "Database name (default: odoo)"
+      default: "odoo"
+      private: false
+
+    - name: db_password
+      prompt: "PostgreSQL password"
+      private: true
+      confirm: true
 
   pre_tasks:
-
-    - name: Set backend network identity
-      ansible.builtin.set_fact:
-        odoo_backend_ip: "{{ backend_ip_input }}"
-        odoo_backend_hostname: "{{ backend_hostname_input }}"
-        odoo_domain: "{{ backend_hostname_input }}"
-      tags:
-        - always
-
-
-    - name: Debug backend variables
-      ansible.builtin.debug:
-        msg:
-          - "BACKEND IP   = {{ odoo_backend_ip }}"
-          - "BACKEND HOST = {{ odoo_backend_hostname }}"
-          - "ODOO DOMAIN  = {{ odoo_domain }}"
-      tags:
-        - always
-
-
-    - name: Run strict environment pre-checks
-      ansible.builtin.import_tasks:
-        file: tasks/preflight.yml
-      tags:
-        - preflight
-        - always
-
-
+    - name: Validate odoo_backend_ip
+      ansible.builtin.assert:
+        that:
+          - odoo_backend_ip is defined
+          - odoo_backend_ip | ansible.utils.ipaddr
+        fail_msg: |
+          ❌ Invalid IP address!
+          Please enter a valid IP address (example: 192.168.10.50).
 
   roles:
-
-    # Base OS
     - role: preflight
-      tags:
-        - preflight
-
     - role: bootstrap
-      tags:
-        - bootstrap
-
     - role: system_update
-      tags:
-        - system
-
-
-    # Users / Database
     - role: odoo_user
-      tags:
-        - odoo_user
-
     - role: postgresql
-      tags:
-        - postgresql
-
-
-    # Runtime
     - role: redis
-      tags:
-        - redis
-
     - role: python
-      tags:
-        - python
-
-
-    # Validate packages after python
     - role: preflight
       tasks_from: packages
-      tags:
-        - packages
-
-
-    # Odoo core
     - role: odoo_source
-      tags:
-        - odoo_source
-
     - role: odoo_config
-      tags:
-        - odoo_config
-
     - role: odoo_systemd
-      tags:
-        - systemd
-
-
-    # Vina backend API
-    - role: vina_api
-      tags:
-        - api
-
-
-    # Database initialization
     - role: database_init
-      tags:
-        - database
-
-
-    # Default Odoo applications
-    - role: odoo_apps
-      tags:
-        - apps
-
-
-    # Reverse proxy
     - role: nginx
-      tags:
-        - nginx
-
-
-    # Internal CA + HTTPS
     - role: local_ssl
-      tags:
-        - local_ssl
-
-
-    # Security
     - role: firewall
-      tags:
-        - firewall
 
-    - role: backup
-      tags:
-        - backup
+  tasks:
+    - name: Ensure Odoo service is started
+      ansible.builtin.systemd:
+        name: odoo
+        state: started
+        enabled: true
 
-    - role: fail2ban
-      tags:
-        - fail2ban
+    - name: Wait until Odoo is ready on port 8069
+      ansible.builtin.wait_for:
+        port: 8069
+        host: 127.0.0.1
+        delay: 3
+        timeout: 90
 
-    - role: logrotate
-      tags:
-        - logrotate
+    - name: Wait for HTTPS response
+      ansible.builtin.uri:
+        url: "https://{{ odoo_backend_ip }}"
+        validate_certs: false
+        status_code: [200, 303, 307, 400, 404]
+      register: result
+      retries: 15
+      delay: 3
+      until: result is succeeded
+      when: nginx_enable | default(true) and ssl_enable | default(true)
+
+    - name: Include database creation pause task
+      ansible.builtin.include_tasks: tasks/wait_for_database.yml
 
 
-    # OCA
+# ==========================================
+# Stage 2: Install OCA modules after database creation
+# ==========================================
+- name: Stage 2 - Install OCA modules after DB creation
+  hosts: odoo_servers
+  become: true
+
+  roles:
     - role: oca_install
-      tags:
-        - oca
-
     - role: addon_path
-      tags:
-        - addons
-
-
-    # Validation
     - role: healthcheck
-      tags:
-        - healthcheck
-
-
-    # Cleanup
-    - role: cleanup
-      tags:
-        - cleanup
-
-
 
   post_tasks:
-
-    - name: Final checks and installation summary
+    - name: Final checks
       ansible.builtin.import_tasks:
         file: tasks/final_check.yml
-      tags:
-        - final_check
-        - always
+      tags: [final_check, always]

@@ -6,7 +6,12 @@ db_host = False
 db_port = 5432
 db_user = {{ odoo_db_user }}
 db_password = {{ odoo_db_password }}
-dev_mode = reload,qweb,xml
+
+# Keep the built-in database wizard enabled: no db_name/dbfilter here, so
+# the first time the instance is opened in a browser, Odoo shows its normal
+# "Create Database" screen (Master Password / DB Name / Email / Password /
+# Language / Country / Demo data) instead of a pre-created login page.
+list_db = True
 
 addons_path = {{ odoo_source }}/addons,{{ odoo_custom_addons }},{{ oca_dir }}
 

@@ -102,7 +102,7 @@ yaml
 
 ---
 
-## ۴. متغیرهای سراسری (`inventory/group_vars/all.yml`)
+## ۴. متغیرهای سراسری (`inventory/group_vars/all/vars.yml`)
 
 برگرفته از `installer/config/installer.conf` (استخراج شده):
 
@@ -192,15 +192,38 @@ firewall_allowed_ports:
 
 ---
 
-## ۵. رمزهای عبور (`inventory/group_vars/vault.yml`)
+## ۵. رمزهای عبور (`inventory/group_vars/all/vault.yml`)
+
+> **توجه مهم:** این فایل باید حتماً داخل یک دایرکتوری به نام یکی از گروه‌های
+> inventory (اینجا `all`) قرار بگیرد، نه به‌صورت یک فایل هم‌سطح `all.yml`.
+> Ansible متغیرهای گروه را فقط از `group_vars/<group_name>.yml` یا از تمام
+> فایل‌های داخل دایرکتوری `group_vars/<group_name>/` می‌خواند؛ فایلی به نام
+> `group_vars/vault.yml` (بدون گروهی به نام «vault») هرگز لود نمی‌شود و باعث
+> خطای `'vault_odoo_master_password' is undefined` می‌شود.
 
 bash
-ansible-vault create /opt/playbook/inventory/group_vars/vault.yml
+ansible-vault create /opt/playbook/inventory/group_vars/all/vault.yml
 
 محتوای پیشنهادی (رمزنگاری‌شده):
 yaml
 vault_odoo_db_password: "********"
 vault_odoo_admin_password: "********"
+
+---
+
+## ۵.۱ پارامترهای گرفته‌شده در ابتدای نصب
+
+هنگام اجرای `ansible-playbook site.yml`، به همین ترتیب از کاربر پرسیده می‌شود:
+
+1. **sudo password** — خودکار توسط `become_ask_pass = True` در `ansible.cfg` قبل از شروع play پرسیده می‌شود (نیازی به `vars_prompt` ندارد).
+2. **local IP address** — `backend_ip_input` در `vars_prompt` فایل `site.yml`.
+3. **local domain / hostname** — `backend_hostname_input` در `vars_prompt` فایل `site.yml`.
+4. **DB name** — `db_name_input` در `vars_prompt` فایل `site.yml` (پیش‌فرض `odoo`، فقط حروف/عدد/زیرخط مجاز است).
+5. **DB password** — `db_password_input` در `vars_prompt` فایل `site.yml` (مخفی و با تأیید مجدد گرفته می‌شود).
+
+مقادیر ۴ و ۵ در `pre_tasks` روی `odoo_db_name` و `odoo_db_password` ست می‌شوند و در کل play (نقش `postgresql`، `database_init`، `odoo_config`) استفاده می‌شوند.
+
+نقش `database_init` **فقط** یک role پستگرس برای Odoo (با پسورد داده‌شده و privilege `CREATEDB`) می‌سازد؛ خود دیتابیس Odoo عمداً از طریق Ansible ساخته/مقداردهی نمی‌شود. `odoo.conf` هم با `list_db = True` و بدون `db_name`/`dbfilter` ثابت تنظیم شده — بنابراین همان بار اول که آدرس سرور در مرورگر باز شود، ویزارد استاندارد **Create Database** خود Odoo (Master Password / DB Name / Email / Password / Language / Country / Demo data) نمایش داده می‌شود، نه یک صفحهٔ لاگین با یوزر از پیش ساخته‌شده. Master Password همان `odoo_master_password` (از `vault_odoo_master_password`) است که باید در آن فرم وارد شود.
 
 ---
 

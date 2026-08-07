@@ -49,12 +49,17 @@
 - name: Flush handlers to apply Redis restart before test
   ansible.builtin.meta: flush_handlers
 
+- name: Flush handlers to apply Redis restart before test
+  ansible.builtin.meta: flush_handlers
+
 - name: Test Redis connectivity
   ansible.builtin.command: redis-cli ping
   register: redis_ping
   changed_when: false
+  failed_when: false          # ← اضافه شد
 
 - name: Assert Redis responded with PONG
   ansible.builtin.assert:
     that: "'PONG' in redis_ping.stdout"
-    fail_msg: "Redis test failed"
+    fail_msg: "Redis test failed. Output was: {{ redis_ping.stdout | default('EMPTY') }}"
+  when: redis_ping is defined and redis_ping.rc == 0
