@@ -1,4 +1,0 @@
-odoo_conf: /etc/odoo/odoo.conf
-core_addons: /opt/odoo/src/odoo/odoo/addons
-custom_addons: /opt/odoo/custom_addons
-oca_dir: /opt/odoo/oca

@@ -1,3 +1,0 @@
----
-# Default timezone (can be overridden in group_vars or inventory)
-odoo_timezone: "Asia/Tehran"

@@ -1,8 +1,0 @@
----
-ssl_enable: true
-
-ssl_dir: /etc/ssl/odoo
-
-odoo_ssl_name: "{{ odoo_backend_hostname }}"
-
-ssl_country: IR

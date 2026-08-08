@@ -1,2 +1,0 @@
-vault_odoo_db_password: "postgres-user-password"
-vault_odoo_master_password: "VeryStrongMasterPassword"
